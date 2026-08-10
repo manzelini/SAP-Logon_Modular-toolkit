@@ -1,0 +1,16 @@
+# Dati del landscape SAP - NON versionare: contengono IP, hostname e nomi dei
+# sistemi SAP di produzione dei clienti Avvale. Restano solo su OneDrive.
+mappa_uuid_sistemi*.xlsx
+Proposta_Standardizzazione*.xlsx
+SAPUILandscape_sorgenti/
+SAPUILandscape_sorgenti_REBUILT*/
+SAPUILandscape_globale/
+_neutralized/
+
+# File di backup generati automaticamente da Deploy-SAPLandscape.ps1 e
+# Restore-SAPLandscape.ps1 (contengono anch'essi dati di landscape)
+SAPUILandscape_backup_*.xml
+SAPUILandscape_prerestore_*.xml
+
+# Archivi
+*.zip
