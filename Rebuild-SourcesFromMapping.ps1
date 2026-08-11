@@ -25,7 +25,6 @@
 #   Nome sistema standard | Da verificare | Tipo sistema
 #
 # Note tecniche importanti (lezioni gia' apprese in questo progetto, v.
-# GESTIONE_MODULARE_SAP_GUI.md par. 7 - applicate qui rigorosamente):
 # - MAI confrontare $node.Name su un XmlElement che ha un attributo
 #   "name": PowerShell restituirebbe il VALORE dell'attributo, non il nome
 #   del tag XML. Qui non serve mai un confronto simile.
