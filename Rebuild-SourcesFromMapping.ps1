@@ -436,7 +436,7 @@ function New-ClientDocument([string]$clientName, $rows, $pool) {
 }
 
 function New-InternalDocument($rows, $pool) {
-    # Foglio "Avvale (interno)": la Workspace "AVVALE (interno)" contiene
+    # Foglio "Avvale (interno)": la Workspace "Internal" contiene
     # DIRETTAMENTE piu' Node fratelli (uno per ogni valore distinto di
     # "Percorso cartella", es. "1.TECHEDGE", "2.AVVALE") - NON un unico
     # Node-cliente che li avvolge, a differenza di tutti gli altri client.
@@ -457,7 +457,7 @@ function New-InternalDocument($rows, $pool) {
     [void]$landscape.AppendChild($workspacesEl)
     $workspace = $doc.CreateElement("Workspace")
     $workspace.SetAttribute("uuid", $wsUuid)
-    $workspace.SetAttribute("name", "AVVALE (interno)")
+    $workspace.SetAttribute("name", "Internal")
     $workspace.SetAttribute("expanded", "0")
     $workspace.SetAttribute("hidden", "0")
     [void]$workspacesEl.AppendChild($workspace)
