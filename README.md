@@ -1,7 +1,7 @@
 # SAP Logon - Gestione modulare landscape
 
 Toolkit PowerShell per gestire in modo centralizzato e modulare le connessioni SAP GUI
-(SAP Logon) di Avvale: un file XML sorgente per cliente, compilato automaticamente in un
+(SAP Logon): un file XML sorgente per cliente, compilato automaticamente in un
 unico file globale distribuito a tutti i colleghi.
 
 Per la descrizione completa dell'architettura, dei flussi operativi e della cronologia dei
