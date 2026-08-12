@@ -5,7 +5,7 @@
     file sorgente dentro SAPUILandscape_sorgenti (un cliente = una cartella = un
     SAPUILandscape.xml), raggruppandoli in un'unica workspace "AVVALE Clients" -
     esattamente come la ricompilazione che finora veniva fatta "a mano" dopo ogni
-    modifica ai sorgenti. La cartella "_AVVALE_INTERNAL" NON viene incorporata:
+    modifica ai sorgenti. La cartella "INTERNAL" NON viene incorporata:
     resta un <Include> separato, come gia' avveniva.
 
     Va eseguito ogni volta che un sorgente cliente cambia (nuovo cliente creato con
