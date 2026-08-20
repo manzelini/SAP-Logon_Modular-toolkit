@@ -25,6 +25,7 @@
 #   Nome sistema standard | Da verificare | Tipo sistema
 #
 # Note tecniche importanti (lezioni gia' apprese in questo progetto, v.
+# GESTIONE_MODULARE_SAP_GUI.md par. 7 - applicate qui rigorosamente):
 # - MAI confrontare $node.Name su un XmlElement che ha un attributo
 #   "name": PowerShell restituirebbe il VALORE dell'attributo, non il nome
 #   del tag XML. Qui non serve mai un confronto simile.
@@ -396,7 +397,13 @@ function New-ClientDocument([string]$clientName, $rows, $pool) {
         if (-not $buckets.Contains($e.Tipo)) { $buckets[$e.Tipo] = New-Object System.Collections.Generic.List[object] }
         [void]$buckets[$e.Tipo].Add($e)
     }
-    $shouldGroup = ($itemEntries.Count -gt 2) -and ($buckets.Keys.Count -gt 1)
+    # Raggruppa SEMPRE per "Tipo sistema" (anche con un solo sistema o un solo
+    # tipo), cosi' una modifica alla colonna "Tipo sistema" nella mappa Excel si
+    # traduce sempre in una sotto-cartella "Sistemi <Tipo>" visibile in SAP Logon
+    # dopo rebuild+deploy - prima veniva creata solo con >2 sistemi E >1 tipo
+    # diverso, e i client "mono-tipo" restavano piatti (poi avvolti da
+    # Build-SAPGlobal.ps1 in un generico "Sistemi" che ignora il tipo).
+    $shouldGroup = $itemEntries.Count -gt 0
 
     if ($shouldGroup) {
         $labels = @($buckets.Keys) | Sort-Object { Get-TypeSortIndex $_ }
@@ -436,7 +443,7 @@ function New-ClientDocument([string]$clientName, $rows, $pool) {
 }
 
 function New-InternalDocument($rows, $pool) {
-    # Foglio "Avvale (interno)": la Workspace "Internal" contiene
+    # Foglio "Avvale (interno)": la Workspace "AVVALE (interno)" contiene
     # DIRETTAMENTE piu' Node fratelli (uno per ogni valore distinto di
     # "Percorso cartella", es. "1.TECHEDGE", "2.AVVALE") - NON un unico
     # Node-cliente che li avvolge, a differenza di tutti gli altri client.
@@ -457,7 +464,7 @@ function New-InternalDocument($rows, $pool) {
     [void]$landscape.AppendChild($workspacesEl)
     $workspace = $doc.CreateElement("Workspace")
     $workspace.SetAttribute("uuid", $wsUuid)
-    $workspace.SetAttribute("name", "Internal")
+    $workspace.SetAttribute("name", "AVVALE (interno)")
     $workspace.SetAttribute("expanded", "0")
     $workspace.SetAttribute("hidden", "0")
     [void]$workspacesEl.AppendChild($workspace)

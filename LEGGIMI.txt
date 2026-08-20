@@ -4,14 +4,36 @@ CONFIGURAZIONE SAP LOGON MODULARE - ISTRUZIONI DI INSTALLAZIONE
 Contenuto di questo pacchetto:
   - SAPUILandscape_globale\      -> cartella DA DISTRIBUIRE (viene rigenerata
                                      in automatico ad ogni deploy, vedi sotto)
-  - SAPUILandscape_sorgenti\     -> un file XML per ciascun cliente (89) +
+  - SAPUILandscape_sorgenti\     -> un file XML per ciascun cliente (107) +
                                      _AVVALE_INTERNAL. Questa e' l'UNICA cosa
                                      che va editata/tenuta aggiornata a mano.
+  - mappa_uuid_sistemi.xlsx      -> mappa di riferimento di tutti i sistemi
+                                     (cliente, SID, nome standard, tipo
+                                     sistema); vedi sotto per come tenerla
+                                     allineata ai sorgenti.
   - Deploy-SAPLandscape.ps1/.cmd -> installa/aggiorna la configurazione sul PC
   - New-SAPClient.ps1/.cmd       -> crea un nuovo cliente in SAPUILandscape_sorgenti
   - Build-SAPGlobal.ps1/.cmd     -> rigenera SAPUILandscape_globale dai sorgenti
                                      senza distribuire nulla (utile per un
                                      controllo rapido dopo una modifica a mano)
+  - Find-SAPClient.ps1/.cmd      -> cerca rapidamente un cliente/sistema dentro
+                                     SAPUILandscape_sorgenti (per nome cartella,
+                                     nome sistema, SID o server), senza doverle
+                                     sfogliare a mano tutte
+  - Rebuild-SourcesFromMapping.ps1/.cmd
+                                  -> ricostruisce i sorgenti a partire da
+                                     mappa_uuid_sistemi.xlsx (direzione
+                                     Excel -> XML)
+  - Export-MappingFromSources.ps1/.cmd
+                                  -> ricostruisce mappa_uuid_sistemi.xlsx a
+                                     partire dai sorgenti (direzione opposta,
+                                     XML -> Excel): utile se la mappa va persa/
+                                     corrotta o sospetti sia rimasta indietro
+                                     rispetto a modifiche fatte a mano sui
+                                     sorgenti
+  - Restore-SAPLandscape.ps1/.cmd
+                                  -> ripristina il tuo file personale da uno
+                                     dei backup datati creati da Deploy
   - LEGGIMI.txt                  -> questo file
 
   Per ogni script .ps1 c'e' un lanciatore .cmd corrispondente: fai doppio
@@ -20,13 +42,13 @@ Contenuto di questo pacchetto:
 
 COME FUNZIONA:
   "SAPUILandscape_sorgenti" e' la versione modulare: un file XML per
-  cliente, editabile singolarmente senza toccare gli altri 88. E' l'UNICA
+  cliente, editabile singolarmente senza toccare gli altri 106. E' l'UNICA
   parte del pacchetto che ha senso modificare - tutto il resto viene
   rigenerato automaticamente da qui.
 
   "SAPUILandscape_globale" e' il risultato "compilato": un solo
-  SAPUILandscapeGlobal.xml con dentro tutti gli 89 clienti raggruppati sotto
-  un'unica cartella "AVVALE Clients" in SAP Logon (invece di 89 cartelle
+  SAPUILandscapeGlobal.xml con dentro tutti i 107 clienti raggruppati sotto
+  un'unica cartella "AVVALE Clients" in SAP Logon (invece di 107 cartelle
   separate sotto "Connections"). Da qualche versione, Deploy-SAPLandscape.ps1
   la rigenera SEMPRE da zero leggendo SAPUILandscape_sorgenti prima di
   distribuire, quindi non serve piu' "ricompilare a mano" prima del deploy:
@@ -46,6 +68,16 @@ COME FUNZIONA:
   col filtro). Non serve fare nulla per questo, e' automatico. La stessa
   classificazione e' riportata nella colonna "Tipo sistema" del file
   mappa_uuid_sistemi.xlsx.
+
+  mappa_uuid_sistemi.xlsx ha tre schede, nell'ordine: "Riepilogo per
+  cliente" (conteggio sistemi per cliente), "Mappa sistemi" (un rigo per
+  sistema, con la colonna "Da verificare" per i nomi non ancora
+  standardizzati) e "Avvale (interno)" (sistemi ad uso interno, da
+  _AVVALE_INTERNAL). Nella colonna "Tipo sistema" delle due schede
+  principali c'e' un search help a tendina (come una F4 SAP) con l'elenco
+  dei valori gia' in uso, in ordine alfabetico e senza duplicati - cosi'
+  quando aggiungi/correggi una riga a mano scegli sempre un valore
+  coerente con gli altri invece di scriverlo libero.
 
 INSTALLAZIONE (da ripetere una volta per ogni utente/PC):
 
@@ -73,7 +105,9 @@ NOTA IMPORTANTE:
   Questo script SOSTITUISCE il SAPUILandscape.xml personale esistente
   (dopo averne fatto un backup). Se un utente ha connessioni personali
   extra non presenti nell'elenco clienti condiviso, valutare prima se
-  vadano recuperate dal backup e riaggiunte manualmente.
+  vadano recuperate dal backup e riaggiunte manualmente. Se invece serve
+  tornare indietro a un backup precedente, vedi "Restore-SAPLandscape.cmd"
+  piu' sotto.
 
 AGGIUNGERE UN CLIENTE NUOVO:
   1. Fai doppio click su "New-SAPClient.cmd": crea la cartella e il file
@@ -92,12 +126,34 @@ AGGIUNGERE UN CLIENTE NUOVO:
 MODIFICARE UN CLIENTE ESISTENTE (aggiungere/togliere un sistema a mano):
   1. Modifica SOLO il file del cliente interessato dentro
      SAPUILandscape_sorgenti\NOMECLIENTE\SAPUILandscape.xml con un editor XML
-     (es. Notepad++ con plugin XML Tools, o VS Code) - gli altri 88 file
+     (es. Notepad++ con plugin XML Tools, o VS Code) - gli altri 106 file
      restano intoccati, questa e' la parte "modulare".
   2. (Opzionale) Fai doppio click su "Build-SAPGlobal.cmd" per rigenerare e
      validare subito SAPUILandscapeGlobal.xml senza distribuire nulla, cosi'
      ti accorgi subito se hai introdotto un errore XML.
   3. Ridistribuisci: rilancia "Deploy-SAPLandscape.cmd" su ogni PC.
+
+CERCARE UN CLIENTE O UN SISTEMA:
+  Se non ricordi il nome esatto della cartella cliente o vuoi trovare
+  rapidamente un sistema (per SID, nome o server) tra le 100+ cartelle di
+  SAPUILandscape_sorgenti, fai doppio click su "Find-SAPClient.cmd" e digita
+  il termine da cercare (oppure passalo come argomento). Mostra i risultati
+  in tabella (Cliente | SID | Nome sistema | Server | File) e, se hai VS Code
+  installato, permette di aprire subito il file XML trovato. E' di sola
+  lettura: non modifica nulla, l'editing del file resta manuale come sopra.
+
+RICOSTRUIRE mappa_uuid_sistemi.xlsx DAI SORGENTI:
+  Se la mappa va persa/corrotta, o sospetti sia rimasta indietro rispetto a
+  modifiche fatte a mano sui sorgenti, fai doppio click su
+  "Export-MappingFromSources.cmd": ricostruisce mappa_uuid_sistemi.xlsx
+  leggendo SAPUILandscape_sorgenti (che e' sempre lo stato "vero" del
+  landscape). Come tutti gli script di questo pacchetto che toccano dati
+  esistenti, NON sovrascrive mai il file originale: scrive sempre un file
+  nuovo con timestamp nel nome (es.
+  mappa_uuid_sistemi_REBUILT_20260817_101500.xlsx) da controllare e poi
+  sostituire tu stesso quando sei sicuro che vada bene. E' l'operazione
+  "inversa" di Rebuild-SourcesFromMapping.ps1 (che invece va da Excel verso
+  i sorgenti XML).
 
 NOTA SUL BLOCCO POWERSHELL:
   I file .cmd lanciano gia' PowerShell con il blocco di sicurezza (execution

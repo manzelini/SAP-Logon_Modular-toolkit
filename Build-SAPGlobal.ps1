@@ -3,7 +3,7 @@
     ---------------------
     Rigenera SAPUILandscape_globale\SAPUILandscapeGlobal.xml a partire da TUTTI i
     file sorgente dentro SAPUILandscape_sorgenti (un cliente = una cartella = un
-    SAPUILandscape.xml), raggruppandoli in un'unica workspace "Clients" -
+    SAPUILandscape.xml), raggruppandoli in un'unica workspace "AVVALE Clients" -
     esattamente come la ricompilazione che finora veniva fatta "a mano" dopo ogni
     modifica ai sorgenti. La cartella "_AVVALE_INTERNAL" NON viene incorporata:
     resta un <Include> separato, come gia' avveniva.
@@ -28,7 +28,7 @@ $InternalName  = "_AVVALE_INTERNAL"
 # in base al PC/utente reale al momento dell'installazione - non toccare a mano.
 $BaseUrl = "file:///C:/Users/Administrator/AppData/Roaming/SAP/Common/SAPUILandscape_globale"
 
-# Uuid fisso della workspace "Clients" (lo stesso usato in tutte le rigenerazioni
+# Uuid fisso della workspace "AVVALE Clients" (lo stesso usato in tutte le rigenerazioni
 # precedenti, cosi' non cambia identita' ad ogni rebuild).
 $WorkspaceUuid = "4869f745-1e39-5605-8e57-ba2fa8642e48"
 
@@ -165,7 +165,7 @@ foreach ($folder in $clientFolders) {
         # BUGFIX (confermato su AET/PIPPONE/AB HOLDING ecc.): quando il Node del
         # cliente contiene <Item> DIRETTAMENTE (client "piatto", senza sotto-Node
         # per tipo sistema), una volta annidato dentro l'unica Workspace condivisa
-        # "Clients" SAP Logon non carica quegli Item nel suo modello dati
+        # "AVVALE Clients" SAP Logon non carica quegli Item nel suo modello dati
         # (il nodo cliente compare ma resta vuoto, e nemmeno il filtro di ricerca
         # di SAP Logon li trova). I client "raggruppati per tipo" invece funzionano
         # sempre, perche' hanno un livello di Node in piu' tra il cliente e gli Item.
@@ -239,7 +239,7 @@ $out = New-Object System.Text.StringBuilder
 [void]$out.AppendLine("<?xml version='1.0' encoding='utf-8'?>")
 [void]$out.AppendLine("<Landscape updated=`"$updated`" version=`"1`" generator=`"SAP GUI for Windows v8000.1.17.155`">")
 [void]$out.AppendLine("`t<Workspaces>")
-[void]$out.AppendLine("`t`t<Workspace uuid=`"$WorkspaceUuid`" name=`"Clients`" expanded=`"0`" hidden=`"0`">")
+[void]$out.AppendLine("`t`t<Workspace uuid=`"$WorkspaceUuid`" name=`"AVVALE Clients`" expanded=`"0`" hidden=`"0`">")
 [void]$out.Append($nodesSb.ToString())
 [void]$out.AppendLine("`t`t</Workspace>")
 [void]$out.AppendLine("`t</Workspaces>")
@@ -286,7 +286,16 @@ foreach ($f in @($GlobalFile, $internalFile)) {
 if ($totalAttrs -eq $allUuids.Count) {
     Write-Host "Verifica uuid: nessuna collisione tra il file globale e _AVVALE_INTERNAL ($($allUuids.Count) uuid)." -ForegroundColor Green
 } else {
-    Write-Host "ATTENZIONE: rilevate $($totalAttrs - $allUuids.Count) collisioni di uuid! Controlla a mano prima di distribuire." -ForegroundColor Red
+    # BLOCCANTE (non solo un avviso): una collisione di uuid qui significa quasi
+    # sempre una riga duplicata nella mappa Excel a cui non e' stato assegnato un
+    # nuovo "UUID Item"/"UUID Service" - il sistema "nuovo" viene silenziosamente
+    # scartato (il suo Item si sovrappone a quello gia' esistente, i suoi dati
+    # Server/SystemID non compaiono da nessuna parte). Deploy-SAPLandscape.ps1
+    # legge il codice di uscita di questo script per decidere se procedere: prima
+    # di questo fix la collisione veniva solo stampata in rosso ma NON bloccava
+    # il deploy, quindi un dato corrotto poteva finire distribuito inosservato.
+    Write-Host "ERRORE: rilevate $($totalAttrs - $allUuids.Count) collisioni di uuid! Controlla a mano prima di distribuire (probabile riga duplicata in mappa_uuid_sistemi.xlsx senza nuovo UUID Item/UUID Service). Deploy interrotto." -ForegroundColor Red
+    exit 1
 }
 
 # --- verifica aggiuntiva: ogni Item deve poter risolvere il proprio serviceid in un

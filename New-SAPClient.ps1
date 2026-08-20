@@ -158,10 +158,12 @@ if ($systems.Count -eq 0) {
     exit 1
 }
 
-# --- decide se raggruppare per tipo (stessa regola usata per gli altri 89 clienti:
-#     solo se ci sono piu' di 2 sistemi E almeno 2 tipi diversi) ---
+# --- decide se raggruppare per tipo: SEMPRE (allineato a
+#     Rebuild-SourcesFromMapping.ps1), cosi' anche un cliente nuovo con un
+#     solo sistema/tipo mostra subito la sotto-cartella "Sistemi <Tipo>"
+#     invece del generico "Sistemi" senza tipo aggiunto da Build-SAPGlobal.ps1 ---
 $grouped     = $systems | Group-Object Tipo
-$shouldGroup = ($systems.Count -gt 2) -and ($grouped.Count -gt 1)
+$shouldGroup = $systems.Count -gt 0
 
 $wsUuid   = New-UniqueUuid $existingUuids
 $nodeUuid = New-UniqueUuid $existingUuids
