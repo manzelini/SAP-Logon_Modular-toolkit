@@ -23,7 +23,14 @@ Contenuto di questo pacchetto:
   - Rebuild-SourcesFromMapping.ps1/.cmd
                                   -> ricostruisce i sorgenti a partire da
                                      mappa_uuid_sistemi.xlsx (direzione
-                                     Excel -> XML)
+                                     Excel -> XML), scrivendo in una
+                                     cartella separata da controllare e
+                                     sostituire a mano
+  - Rebuild-SourcesFromMapping-Sostituisci.cmd
+                                  -> come sopra, ma se le verifiche sono
+                                     pulite sostituisce da solo i sorgenti
+                                     live (con backup a timestamp della
+                                     versione precedente)
   - Export-MappingFromSources.ps1/.cmd
                                   -> ricostruisce mappa_uuid_sistemi.xlsx a
                                      partire dai sorgenti (direzione opposta,
@@ -132,6 +139,45 @@ MODIFICARE UN CLIENTE ESISTENTE (aggiungere/togliere un sistema a mano):
      validare subito SAPUILandscapeGlobal.xml senza distribuire nulla, cosi'
      ti accorgi subito se hai introdotto un errore XML.
   3. Ridistribuisci: rilancia "Deploy-SAPLandscape.cmd" su ogni PC.
+
+RIMUOVERE UN CLIENTE:
+  Modo piu' diretto (consigliato):
+  1. Elimina la cartella SAPUILandscape_sorgenti\NOMECLIENTE\ (o spostala
+     fuori dal pacchetto, come backup).
+  2. (Opzionale) "Build-SAPGlobal.cmd" per validare subito.
+  3. Ridistribuisci: "Deploy-SAPLandscape.cmd" su ogni PC.
+
+  Se invece lavori partendo da mappa_uuid_sistemi.xlsx (cancelli tutte le
+  righe del cliente e rilanci il rebuild): dalla versione corrente dello
+  script, un cliente senza PIU' NESSUNA riga in Excel viene considerato
+  rimosso di proposito e la sua cartella non viene ricopiata nel nuovo
+  SAPUILandscape_sorgenti_REBUILT - lo script stampa comunque l'elenco dei
+  clienti esclusi per esteso, cosi' te ne accorgi prima di sostituire i
+  sorgenti. Due modi per lanciarlo:
+    - Doppio click su "Rebuild-SourcesFromMapping.cmd": scrive solo in
+      SAPUILandscape_sorgenti_REBUILT, da controllare tu e poi sostituire
+      a mano alla SAPUILandscape_sorgenti live prima di Build/Deploy
+      (rinomina la vecchia come backup, rinomina/sposta la _REBUILT al suo
+      posto).
+    - Doppio click su "Rebuild-SourcesFromMapping-Sostituisci.cmd": fa lo
+      stesso rebuild ma, se le verifiche finali sono pulite (nessun errore
+      XML/collisione/orfano), esegue da solo il passaggio sopra: rinomina
+      la SAPUILandscape_sorgenti esistente aggiungendo un timestamp (es.
+      SAPUILandscape_sorgenti_20260820_094037, da tenere come backup finche'
+      non hai verificato che tutto sia a posto) e sposta la
+      _REBUILT al suo posto come nuova cartella sorgenti attiva. Se le
+      verifiche trovano problemi NON tocca nulla: i sorgenti ricostruiti
+      restano solo in _REBUILT per un controllo manuale.
+  In entrambi i casi, dopo la sostituzione (manuale o automatica) restano
+  comunque da lanciare "Build-SAPGlobal.cmd" (validazione) e
+  "Deploy-SAPLandscape.cmd" (distribuzione).
+  ATTENZIONE - caso limite: un cliente con DAVVERO zero sistemi non e'
+  rappresentabile in un foglio "un rigo per sistema" e finirebbe anch'esso
+  nell'elenco "clienti rimossi" pur non essendo stato eliminato apposta.
+  Se ti serve preservarlo invece di farlo sparire, lancia lo script (da
+  PowerShell) con lo switch aggiuntivo "-PreserveClientsWithoutRows"
+  (ricopia questi clienti invariati, comportamento in uso nelle versioni
+  precedenti dello script) - i due file .cmd non lo passano di default.
 
 CERCARE UN CLIENTE O UN SISTEMA:
   Se non ricordi il nome esatto della cartella cliente o vuoi trovare

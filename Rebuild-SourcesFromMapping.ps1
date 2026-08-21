@@ -18,6 +18,28 @@
 # oppure semplicemente Rebuild-SourcesFromMapping.cmd a doppio clic se i
 # tre elementi si trovano gia' con i nomi di default nella stessa cartella.
 #
+# CLIENTI RIMOSSI DALL'EXCEL: un cliente che nella "Mappa sistemi" non ha
+# PIU' NESSUNA riga viene considerato eliminato di proposito e la sua
+# cartella non viene ricopiata in $OutFolder (rebuild + deploy successivi
+# lo fanno sparire davvero da SAP Logon). L'elenco di questi clienti viene
+# sempre stampato per esteso (mai solo un conteggio), perche' un cliente
+# con DAVVERO zero sistemi non e' rappresentabile in un foglio "un rigo
+# per sistema" e finirebbe nello stesso elenco pur non essendo stato
+# rimosso apposta. Se serve preservare questi casi invece di eliminarli,
+# rilanciare con lo switch -PreserveClientsWithoutRows (comportamento
+# storico dello script: li ricopia invariati dalla reference).
+#
+# DOVE FINISCONO I SORGENTI RICOSTRUITI: per default restano in $OutFolder
+# (".\SAPUILandscape_sorgenti_REBUILT"), separati dalla $ReferenceFolder
+# live - vanno controllati e poi sostituiti a mano alla cartella sorgenti
+# vera prima di Build/Deploy. Con lo switch -ReplaceSources lo script fa
+# questo passaggio da solo, ma SOLO se le verifiche finali non hanno
+# rilevato errori: rinomina la $ReferenceFolder esistente aggiungendo un
+# timestamp (backup, es. "SAPUILandscape_sorgenti_20260820_090633") e
+# sposta $OutFolder al suo posto, cosi' diventa lei la nuova cartella
+# sorgenti attiva, pronta per Build-SAPGlobal/Deploy-SAPLandscape senza
+# altri passaggi manuali.
+#
 # Colonne attese nei fogli "Mappa sistemi" e "Avvale (interno)" (in questo
 # ordine, intestazione in riga 1):
 #   Cliente | Percorso cartella | Nome sistema | System ID | Server |
@@ -51,7 +73,9 @@ param(
     [string]$OutFolder = ".\SAPUILandscape_sorgenti_REBUILT",
     [string]$Updated = "2026-01-01T00:00:00Z",
     [string]$Version = "1",
-    [string]$Generator = "SAP GUI for Windows v8000.1.17.155"
+    [string]$Generator = "SAP GUI for Windows v8000.1.17.155",
+    [switch]$PreserveClientsWithoutRows,
+    [switch]$ReplaceSources
 )
 
 $ErrorActionPreference = "Stop"
@@ -625,24 +649,45 @@ if ($internalRows.Count -gt 0) {
     Save-ClientDocument $doc (Join-Path $internalDestDir "SAPUILandscape.xml")
 }
 
-# --- clienti presenti nella reference ma senza NESSUNA riga in Excel
-# (es. cliente con zero sistemi, o con Service definiti ma nessun Item
-# collegato) - un foglio "un sistema per riga" non puo' rappresentarli:
-# vengono ricopiati invariati invece di sparire silenziosamente ---
-$nCopiedEmpty = 0
+# --- clienti presenti nella reference ma senza NESSUNA riga in Excel ---
+# Di default sono considerati RIMOSSI DI PROPOSITO (l'utente li ha tolti
+# dall'Excel) e la loro cartella NON viene ricopiata in $OutFolder: e'
+# cosi' che cancellare le righe di un cliente dall'Excel si traduce
+# davvero nella sua sparizione dopo rebuild + deploy, invece di farlo
+# ricomparire identico ad ogni rebuild successivo (bug osservato: un
+# cliente rimane fisicamente nella reference con lo stesso Copy-Item, che
+# ne preserva pure il timestamp originale, quindi il rebuild successivo lo
+# ritrova ancora la' e lo ricopia di nuovo all'infinito).
+# Caso limite: un cliente con DAVVERO zero sistemi non e' rappresentabile
+# in un foglio "un rigo per sistema" e finirebbe nello stesso elenco pur
+# non essendo stato rimosso apposta - per questo l'elenco dei clienti
+# esclusi viene SEMPRE stampato per esteso (mai un semplice conteggio), e
+# chi ha bisogno del vecchio comportamento (ricopiarli invariati) puo'
+# rilanciare lo script con -PreserveClientsWithoutRows.
+$missingClients = New-Object System.Collections.Generic.List[string]
 if (Test-Path -LiteralPath $ReferenceFolder) {
     foreach ($cname in $pool.ClientWsUuid.Keys) {
         if ($byClient.Contains($cname)) { continue }
         $src = Join-Path $ReferenceFolder $cname
-        $dst = Join-Path $OutFolder $cname
-        if (Test-Path -LiteralPath $src) {
+        if (Test-Path -LiteralPath $src) { [void]$missingClients.Add($cname) }
+    }
+}
+
+if ($missingClients.Count -gt 0) {
+    if ($PreserveClientsWithoutRows) {
+        Write-Host "`nClienti senza righe in Excel, ricopiati invariati dalla reference (-PreserveClientsWithoutRows attivo):" -ForegroundColor Yellow
+        foreach ($cname in $missingClients) {
+            $src = Join-Path $ReferenceFolder $cname
+            $dst = Join-Path $OutFolder $cname
             Copy-Item -LiteralPath $src -Destination $dst -Recurse
-            $nCopiedEmpty++
             $nClients++
+            Write-Host "  - $cname"
         }
     }
-    if ($nCopiedEmpty -gt 0) {
-        Write-Host "Clienti senza righe in Excel, ricopiati invariati dalla reference: $nCopiedEmpty"
+    else {
+        Write-Host "`nClienti senza righe in Excel, considerati RIMOSSI (cartella NON ricopiata in $OutFolder):" -ForegroundColor Yellow
+        foreach ($cname in $missingClients) { Write-Host "  - $cname" }
+        Write-Host "Se qualcuno di questi ha invece DAVVERO zero sistemi ed e' da tenere, rilancia con -PreserveClientsWithoutRows." -ForegroundColor Yellow
     }
 }
 
@@ -693,9 +738,44 @@ Write-Host "  file XML malformati: $badXml"
 Write-Host "  uuid totali indicizzati: $($allUuids.Keys.Count) | collisioni: $collisions"
 Write-Host "  item con serviceid non risolvibile: $orphans"
 
-if ($badXml -eq 0 -and $collisions -eq 0 -and $orphans -eq 0) {
+$rebuildOk = ($badXml -eq 0 -and $collisions -eq 0 -and $orphans -eq 0)
+if ($rebuildOk) {
     Write-Host "`nTutto ok. Sorgenti pronti in: $OutFolder" -ForegroundColor Green
 }
 else {
     Write-Host "`nATTENZIONE: controlla gli avvisi sopra prima di usare questi sorgenti." -ForegroundColor Yellow
+}
+
+# --- -ReplaceSources: sostituisce da sola la cartella sorgenti live con
+# quella appena ricostruita, dopo averne fatto un backup con timestamp.
+# Va fatto SOLO se le verifiche sopra sono pulite: altrimenti si rischia
+# di sostituire i sorgenti veri con qualcosa di rotto.
+if ($ReplaceSources) {
+    if (-not $rebuildOk) {
+        Write-Host "`n-ReplaceSources richiesto ma le verifiche hanno rilevato problemi (vedi sopra): NON sostituisco $ReferenceFolder." -ForegroundColor Red
+        Write-Host "I sorgenti ricostruiti restano solo in $OutFolder per un controllo manuale." -ForegroundColor Red
+    }
+    elseif (-not (Test-Path -LiteralPath $ReferenceFolder)) {
+        Write-Host "`n-ReplaceSources richiesto ma $ReferenceFolder non esiste: niente da sostituire." -ForegroundColor Yellow
+    }
+    else {
+        $refFull = (Resolve-Path -LiteralPath $ReferenceFolder).ProviderPath
+        $refLeaf = Split-Path -Leaf $refFull
+        $refParent = Split-Path -Parent $refFull
+        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+        $backupName = "${refLeaf}_$timestamp"
+        $backupPath = Join-Path $refParent $backupName
+
+        if (Test-Path -LiteralPath $backupPath) {
+            Write-Host "`nATTENZIONE: esiste gia' una cartella $backupPath - -ReplaceSources annullato per sicurezza (rilancia tra qualche secondo)." -ForegroundColor Red
+        }
+        else {
+            Write-Host "`nSostituzione in corso (-ReplaceSources) ..."
+            Rename-Item -LiteralPath $refFull -NewName $backupName
+            Write-Host "  backup del vecchio '$refLeaf' -> '$backupName'"
+            Move-Item -LiteralPath $OutFolder -Destination $refFull
+            Write-Host "  '$OutFolder' -> '$refFull' (nuova cartella sorgenti attiva)"
+            Write-Host "`nFatto. Ora puoi lanciare Build-SAPGlobal.cmd e Deploy-SAPLandscape.cmd." -ForegroundColor Green
+        }
+    }
 }
